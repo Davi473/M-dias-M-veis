@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>BTC/USD com Médias Móveis</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h2>Bitcoin (BTC/USD) com Médias Móveis</h2>
+  <canvas id="btcChart" width="900" height="450"></canvas>
+
+  <script>
+    // Função para calcular média móvel simples
+    function calcularMediaMovel(data, periodo) {
+      const mm = [];
+      for (let i = 0; i < data.length; i++) {
+        if (i < periodo - 1) {
+          mm.push(null); // não há dados suficientes no início
+        } else {
+          const soma = data.slice(i - periodo + 1, i + 1).reduce((a, b) => a + b, 0);
+          mm.push(soma / periodo);
+        }
+      }
+      return mm;
+    }
+
+    async function fetchBitcoinData() {
+      const dias = 200;
+      const res = await fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${dias}&interval=daily`);
+      const data = await res.json();
+
+      const labels = data.prices.map(item => {
+        const date = new Date(item[0]);
+        return date.toLocaleDateString('pt-BR');
+      });
+
+      const prices = data.prices.map(item => item[1]);
+
+      return { labels, prices };
+    }
+
+    async function renderChart() {
+      const { labels, prices } = await fetchBitcoinData();
+
+      const mm21 = calcularMediaMovel(prices, 21);
+      const mm200 = calcularMediaMovel(prices, 200);
+
+      const ctx = document.getElementById('btcChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Preço Fechamento BTC/USD',
+              data: prices,
+              borderColor: 'orange',
+              backgroundColor: 'rgba(255, 165, 0, 0.1)',
+              fill: false,
+              tension: 0.3
+            },
+            {
+              label: 'Média Móvel 21 dias',
+              data: mm21,
+              borderColor: 'blue',
+              borderWidth: 1.5,
+              fill: false,
+              tension: 0.3
+            },
+            {
+              label: 'Média Móvel 200 dias',
+              data: mm200,
+              borderColor: 'green',
+              borderWidth: 2,
+              fill: false,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Preço do Bitcoin com Médias Móveis (21 e 200 dias)'
+            }
+          },
+          scales: {
+            x: {
+              ticks: { maxTicksLimit: 15 },
+              title: {
+                display: true,
+                text: 'Data'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Preço em USD'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    renderChart();
+  </script>
+</body>
+</html>
